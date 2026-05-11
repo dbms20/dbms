@@ -1,0 +1,147 @@
+3d) imagine a online restaurant needs a system to manage the menu, track customer orders and generate sales reports. they use a mysql database for this. entities are as follows: 
+● menu: stores details of all the items offered by the restaurant (item_id, item_name, category, price). 
+● customers: stores information about registered customers (customer_id, name, contact_number). 
+● orders: records details of each order placed (order_id, customer_id, order_date_time). 
+● orderitems: lists the individual items included in each order (order_id, item_id, quantity, unit_price). 
+
+-- menu
+create table menu (
+    item_id int primary key,
+    item_name varchar(50),
+    category varchar(50),
+    price decimal(10,2)
+);
+
+-- customers
+create table customers (
+    customer_id int primary key,
+    name varchar(50),
+    contact_number varchar(15)
+);
+
+-- orders
+create table orders (
+    order_id int primary key,
+    customer_id int,
+    order_date_time datetime,
+    foreign key (customer_id) references customers(customer_id)
+);
+
+-- orderitems
+create table orderitems (
+    order_id int,
+    item_id int,
+    quantity int,
+    unit_price decimal(10,2),
+    foreign key (order_id) references orders(order_id),
+    foreign key (item_id) references menu(item_id)
+);
+
+-- menu
+insert into menu values
+(1, 'pizza', 'fast food', 200),
+(2, 'burger', 'fast food', 120),
+(3, 'pasta', 'italian', 180),
+(4, 'salad', 'healthy', 100);
+
+-- customers
+insert into customers values
+(101, 'amit', '9876543210'),
+(102, 'sneha', '9876501234'),
+(103, 'rahul', '9876512345');
+
+-- orders
+insert into orders values
+(1, 101, '2026-04-25 12:00:00'),
+(2, 102, '2026-04-25 13:00:00'),
+(3, 101, '2026-04-24 19:30:00');
+
+-- orderitems
+insert into orderitems values
+(1, 1, 2, 200),
+(1, 2, 1, 120),
+(2, 3, 1, 180),
+(3, 1, 1, 200);
+
+
+write and execute the sql queries for the following 
+1) retrieve customers whose names contain ‘an’. 
+select *
+from customers
+where name like '%an%';
+
+2) retrieve details of a specific customer using customer_id. 
+
+select *
+from customers
+where customer_id = 101;
+
+3) create a trigger to log deleted customer records into a backup table. 
+
+create table customers_backup (
+    customer_id int,
+    name varchar(50),
+    contact_number varchar(15),
+    deleted_at timestamp default current_timestamp
+);
+
+delimiter //
+create trigger backup_customer_delete
+before delete on customers
+for each row
+begin
+    insert into customers_backup(customer_id, name, contact_number)
+    values (old.customer_id, old.name, old.contact_number);
+end //
+
+delimiter ;
+
+
+
+
+
+
+
+
+4) create a procedure to add a new menu item. 
+
+delimiter //
+
+create procedure insertmenuitem(
+    in iid int,
+    in iname varchar(50),
+    in icategory varchar(50),
+    in iprice decimal(10,2)
+)
+begin
+    insert into menu values (iid, iname, icategory, iprice);
+end //
+
+delimiter ;
+call insertmenuitem(6, 'fries', 'fast food', 80);
+
+5) show menu item names along with total quantity sold. 
+
+select 
+    m.item_name,
+    sum(oi.quantity) as total_sold
+from menu m
+join orderitems oi on m.item_id = oi.item_id
+group by m.item_name;
+
+6) retrieve customers who have placed orders with total amount greater than 1000. 
+select c.name, sum(oi.quantity * oi.unit_price) as total_amount
+from customers c
+join orders o on c.customer_id = o.customer_id
+join orderitems oi on o.order_id = oi.order_id
+group by c.name
+having sum(oi.quantity * oi.unit_price) > 100;
+
+
+7) find average price of menu items.
+select avg(price) as avg_price
+from menu;
+
+
+
+
