@@ -1,0 +1,159 @@
+
+5d) imagine a hospital management system which stores patients information, doctors information, appointments, departments. 
+patients: stores personal details of each patient (patientid, patientname, dob, address, phonenumber) doctors: stores details of doctors (doctorid, doctorname, specialty, departmentid) 
+appointments: tracks patient appointments with doctors (appointmentid, patientid, doctorid, appointment_date, created_at_time) 
+departments: lists various departments in the hospital (departmentid, departmentname, location) 
+
+
+-- departments
+create table departments (
+    departmentid int primary key,
+    departmentname varchar(50),
+    location varchar(50)
+);
+
+-- patients
+create table patients (
+    patientid int primary key,
+    patientname varchar(50),
+    dob date,
+    address varchar(100),
+    phonenumber varchar(15)
+);
+
+-- doctors
+create table doctors (
+    doctorid int primary key,
+    doctorname varchar(50),
+    specialty varchar(50),
+    departmentid int default 1,
+    foreign key (departmentid) references departments(departmentid)
+);
+
+-- appointments
+create table appointments (
+    appointmentid int primary key,
+    patientid int,
+    doctorid int,
+    appointment_date date,
+    created_at_time datetime,
+    foreign key (patientid) references patients(patientid),
+    foreign key (doctorid) references doctors(doctorid)
+);
+
+
+
+
+
+-- departments
+insert into departments values
+(1, 'general', 'block a'),
+(2, 'cardiology', 'block b'),
+(3, 'neurology', 'block c'),
+(4, 'orthopedics', 'block d');
+
+-- patients
+insert into patients values
+(101, 'amit', '2000-03-10', 'pune', '9876543210'),
+(102, 'sneha', '1998-07-12', 'mumbai', '9876501234'),
+(103, 'rahul', '2002-01-15', 'delhi', '9876512345');
+
+-- doctors
+insert into doctors values
+(1, 'dr. sharma', 'cardiology', 2),
+(2, 'dr. mehta', 'neurology', 3),
+(3, 'dr. khan', 'orthopedics', 4),
+(4, 'dr. patel', 'general', 1);
+
+-- appointments
+insert into appointments values
+(1, 101, 1, curdate(), now()),
+(2, 102, 2, curdate(), now()),
+(3, 103, 3, '2026-05-01', now());
+
+solve the following statements with the help of sql queries 
+1. list all doctors who work in the cardiology department. 
+select d.doctorname
+from doctors d
+join departments dep on d.departmentid = dep.departmentid
+where dep.departmentname = 'cardiology';
+
+2. list patients between 30 and 50 years old. 
+
+select patientname,
+       timestampdiff(year, dob, curdate()) as age
+from patients
+where timestampdiff(year, dob, curdate()) between 30 and 50;
+
+3. who are the 3 oldest patients in the hospital? 
+
+
+select *
+from patients
+order by dob asc
+limit 3;
+
+4. create a procedure that returns patient counts by age groups. 
+
+delimiter //
+
+create procedure patientagegroups()
+begin
+    select 
+        case 
+            when timestampdiff(year, dob, curdate()) < 18 then 'child'
+            when timestampdiff(year, dob, curdate()) between 18 and 60 then 'adult'
+            else 'senior'
+        end as age_group,
+        count(*) as total_patients
+    from patients
+    group by age_group;
+end //
+
+delimiter ;
+call patientagegroups();
+
+
+5. create a view that shows patient id, name, age, and phone number for all patients. 
+
+create view patient_details_view as
+select 
+    patientid,
+    patientname,
+    timestampdiff(year, dob, curdate()) as age,
+    phonenumber
+from patients;
+select * from patient_details_view;
+
+6. create a function that counts how many appointments a patient has. 
+delimiter //
+create function getappointmentcount(pid int)
+returns int
+deterministic
+begin
+    declare total int;
+
+    select count(*)
+    into total
+    from appointments
+    where patientid = pid;
+
+    return total;
+end //
+delimiter ;
+select getappointmentcount(101) as total_appointments;
+
+7. create a trigger to ensure phone numbers are not null. 
+delimiter //
+create trigger check_phone_notnull
+before insert on patients
+for each row
+begin
+    if new.phonenumber is null then
+        signal sqlstate '45000'
+        set message_text = 'phone number cannot be null';
+    end if;
+end //
+
+delimiter ;
+
