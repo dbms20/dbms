@@ -1,0 +1,238 @@
+1b) imagine a college management system which manages student information, classes, subjects, grades, attendance, and teacher assignments. 
+students: stores personal details of each student (student_id, name, date_of_birth, gender, class_id). 
+classes: lists the different classes in the school (class_id, class_name, teacher_id - optional, could be in a separate assignment table). 
+subjects: lists the subjects taught in the school (subject_id, subject_name). (no. of. subjects= 4, each carries 25 marks). 
+teachers: stores personal details of teachers (teacher_id, name, subject_id - can teach multiple, so might need a linking table). 
+marks: records the marks obtained by students in different subjects for various exams (exam_id, student_id, class_id, subject_id, exam_name, marks). 
+attendance: tracks the daily attendance of students (student id, month, no_of_days_present). 
+
+-- classes
+create table classes (
+    class_id int primary key,
+    class_name varchar(50)
+);
+
+-- students
+create table students (
+    student_id int primary key,
+    name varchar(50),
+    date_of_birth date,
+    gender varchar(10),
+    class_id int,
+    foreign key (class_id) references classes(class_id)
+);
+
+-- subjects (4 subjects)
+create table subjects (
+    subject_id int primary key,
+    subject_name varchar(50)
+);
+
+-- teachers
+create table teachers (
+    teacher_id int primary key,
+    name varchar(50)
+);
+
+-- teacher-subject mapping
+create table teacher_subject (
+    teacher_id int,
+    subject_id int,
+    primary key (teacher_id, subject_id),
+    foreign key (teacher_id) references teachers(teacher_id),
+    foreign key (subject_id) references subjects(subject_id)
+);
+
+-- marks
+create table marks (
+    exam_id int,
+    student_id int,
+    class_id int,
+    subject_id int,
+    exam_name varchar(50),
+    marks int check (marks <= 25),
+    primary key (exam_id, student_id, subject_id),
+    foreign key (student_id) references students(student_id),
+    foreign key (class_id) references classes(class_id),
+    foreign key (subject_id) references subjects(subject_id)
+);
+
+-- attendance (new for 1b)
+create table attendance (
+    student_id int,
+    month varchar(20),
+    no_of_days_present int,
+    primary key (student_id, month),
+    foreign key (student_id) references students(student_id)
+);
+
+-- classes (se included as required in questions)
+insert into classes values
+(1, 'fe'),
+(2, 'se'),
+(3, 'te');
+
+-- students
+insert into students values
+(101, 'amit', '2004-03-15', 'male', 2),
+(102, 'sneha', '2005-07-20', 'female', 2),
+(103, 'rahul', '2003-03-10', 'male', 1),
+(104, 'priya', '2004-11-25', 'female', 2),
+(105, 'neha', '2003-03-05', 'female', 3);
+
+-- subjects
+insert into subjects values
+(1, 'dbms'),
+(2, 'os'),
+(3, 'java'),
+(4, 'python');
+
+-- teachers
+insert into teachers values
+(1, 'mr. sharma'),
+(2, 'ms. patel'),
+(3, 'mr. khan');
+
+-- teacher-subject mapping
+insert into teacher_subject values
+(1, 1),
+(1, 2),
+(2, 3),
+(3, 4);
+
+-- marks (midterm exam)
+insert into marks values
+(1, 101, 2, 1, 'midterm', 21),
+(1, 101, 2, 2, 'midterm', 18),
+(1, 101, 2, 3, 'midterm', 22),
+(1, 101, 2, 4, 'midterm', 19),
+
+(1, 102, 2, 1, 'midterm', 23),
+(1, 102, 2, 2, 'midterm', 21),
+(1, 102, 2, 3, 'midterm', 20),
+(1, 102, 2, 4, 'midterm', 22),
+
+(1, 104, 2, 1, 'midterm', 9),   -- below 10 case
+(1, 104, 2, 2, 'midterm', 23),
+(1, 104, 2, 3, 'midterm', 22),
+(1, 104, 2, 4, 'midterm', 21),
+
+(1, 103, 1, 1, 'midterm', 17),
+(1, 105, 3, 1, 'midterm', 19);
+
+-- attendance (march data included)
+insert into attendance values
+(101, 'march', 26),
+(102, 'march', 28),
+(103, 'march', 20),
+(104, 'march', 25),
+(105, 'march', 22);
+
+
+
+
+
+solve the following statements with the help of sql queries. 
+1) define a function to calculate the number of absent days for a given student in a specific month and year. 
+delimiter //
+create function getabsentdays(
+    sid int,
+    month_name varchar(20)
+)
+returns int
+deterministic
+begin
+    declare present_days int;
+    declare total_days int default 30;
+
+    select no_of_days_present into present_days
+    from attendance
+    where student_id = sid and month = month_name;
+
+    return (total_days - ifnull(present_days, 0));
+end //
+delimiter ;
+
+select getabsentdays(101, 'march') as absent_days;
+
+2) combine a list of all students in class 'se' who have scored more than 20 marks in any subject. 
+select distinct s.student_id, s.name
+from students s
+join classes c on s.class_id = c.class_id
+join marks m on s.student_id = m.student_id
+where c.class_name = 'se'
+and m.marks > 20;
+
+3) identify students whose names have the second letter as 'a'. 
+select name
+from students
+where name like '_a%';
+
+4) calculate the average attendance percentage for all students in class 'se' for the month of march. 
+select 
+    avg((a.no_of_days_present / 30) * 100) as avg_attendance_percentage
+from attendance a
+join students s on a.student_id = s.student_id
+join classes c on s.class_id = c.class_id
+where c.class_name = 'se'
+and a.month = 'march';
+
+5) list the names of students who have scored below 10 marks in any subject. 
+select distinct s.name
+from students s
+join marks m on s.student_id = m.student_id
+where m.marks < 10;
+
+
+
+6) list the names of all students in the 'se' class and their corresponding total marks in the "midterm" exam.
+ select 
+    s.name,
+    sum(m.marks) as total_marks
+from students s
+join classes c on s.class_id = c.class_id
+join marks m on s.student_id = m.student_id
+where c.class_name = 'se'
+and m.exam_name = 'midterm'
+group by s.name;
+
+7) use a cursor to display names of all students one by one. 
+
+delimiter //
+create procedure displaystudents()
+begin
+    declare done int default false;
+    declare s_name varchar(50);
+
+    declare cur cursor for 
+        select name from students;
+
+    declare continue handler for not found set done = true;
+
+    open cur;
+
+    read_loop: loop
+        fetch cur into s_name;
+        
+        if done then
+            leave read_loop;
+        end if;
+
+        select s_name as student_name;
+    end loop;
+
+    close cur;
+end //
+
+delimiter ;
+
+call displaystudents();
+
+
+
+
+
+
+
+
+
