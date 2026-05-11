@@ -1,0 +1,189 @@
+1c) imagine a school management system which manages student information, classes, subjects, grades, attendance, and teacher assignments. 
+students: stores personal details of each student (student id, name, date of birth, gender, class id). 
+classes: lists the different classes in the school (class id, class name, teacher id - optional, could be in a separate assignment table). 
+subjects: lists the subjects taught in the school (subject id, subject name). 
+teachers: stores personal details of teachers (teacher id, name, subject id - can teach multiple, so might need a linking table). 
+grades: records the marks obtained by students in different subjects for various exams (grade id, student id, subject id, exam name, marks). 
+attendance: tracks the daily attendance of students (student id, attendance date, status - present, absent, late). 
+
+-- classes
+create table classes (
+    class_id int primary key,
+    class_name varchar(50)
+);
+
+-- students
+create table students (
+    student_id int primary key,
+    name varchar(50),
+    date_of_birth date,
+    gender varchar(10),
+    class_id int,
+    foreign key (class_id) references classes(class_id)
+);
+
+-- subjects
+create table subjects (
+    subject_id int primary key,
+    subject_name varchar(50)
+);
+
+-- teachers
+create table teachers (
+    teacher_id int primary key,
+    name varchar(50)
+);
+
+-- teacher-subject mapping
+create table teacher_subject (
+    teacher_id int,
+    subject_id int,
+    primary key (teacher_id, subject_id),
+    foreign key (teacher_id) references teachers(teacher_id),
+    foreign key (subject_id) references subjects(subject_id)
+);
+
+-- grades
+create table grades (
+    grade_id int primary key,
+    student_id int,
+    subject_id int,
+    exam_name varchar(50),
+    marks int,
+    foreign key (student_id) references students(student_id),
+    foreign key (subject_id) references subjects(subject_id)
+);
+
+-- attendance
+create table attendance (
+    student_id int,
+    attendance_date date,
+    status varchar(10),
+    foreign key (student_id) references students(student_id)
+);
+
+-- student class history (for trigger)
+create table student_class_history (
+    history_id int auto_increment primary key,
+    student_id int,
+    student_name varchar(50),
+    old_class_id int,
+    new_class_id int,
+    change_time timestamp default current_timestamp
+);
+
+-- classes
+insert into classes values
+(1, 'a'),
+(2, 'b'),
+(3, 'c');
+
+-- students
+insert into students values
+(101, 'deepak', '2005-03-10', 'male', 1),
+(102, 'divya', '2006-07-12', 'female', 1),
+(103, 'amit', '2005-02-15', 'male', 2),
+(104, 'dinesh', '2004-11-20', 'male', 2),
+(105, 'sneha', '2005-09-25', 'female', 3);
+
+-- subjects
+insert into subjects values
+(1, 'math'),
+(2, 'science'),
+(3, 'english'),
+(4, 'computer');
+
+-- teachers
+insert into teachers values
+(1, 'mr. sharma'),
+(2, 'ms. patel');
+
+-- mapping
+insert into teacher_subject values
+(1, 1),
+(1, 2),
+(2, 3),
+(2, 4);
+
+-- grades
+insert into grades values
+(1, 101, 1, 'midterm', 85),
+(2, 101, 2, 'midterm', 78),
+(3, 102, 1, 'midterm', 90),
+(4, 103, 2, 'midterm', 88),
+(5, 104, 3, 'midterm', 92),
+(6, 105, 4, 'midterm', 80);
+
+-- attendance
+insert into attendance values
+(101, '2026-03-01', 'present'),
+(101, '2026-03-02', 'absent'),
+(102, '2026-03-01', 'present'),
+(103, '2026-03-01', 'late'),
+(104, '2026-03-01', 'present');
+
+solve the following statements with the help of sql queries. 
+1) create a view to get students' attendance summary 
+create view attendance_summary as
+select 
+    s.student_id,
+    s.name,
+    count(case when a.status = 'present' then 1 end) as present_days,
+    count(case when a.status = 'absent' then 1 end) as absent_days,
+    count(case when a.status = 'late' then 1 end) as late_days
+from students s
+left join attendance a on s.student_id = a.student_id
+group by s.student_id, s.name;
+
+select * from attendance_summary;
+
+2) find the number of students in each class. 
+select c.class_name, count(s.student_id) as total_students
+from classes c
+left join students s on c.class_id = s.class_id
+group by c.class_name;
+
+3) retrieve the names and student ids of all students whose names begin with the letter 'd'. 
+select student_id, name
+from students
+where name like 'd%';
+
+4) write a query to find the total number of subjects offered in the school. 
+select count(*) as total_subjects
+from subjects;
+
+
+
+
+5) create a trigger to insert the student’s name, old class id, new class id and timestamp automatically in student_class_history table when a student is moved to a different class. 
+delimiter //
+
+create trigger track_class_change
+before update on students
+for each row
+begin
+    if old.class_id <> new.class_id then
+        insert into student_class_history
+        (student_id, student_name, old_class_id, new_class_id)
+        values
+        (old.student_id, old.name, old.class_id, new.class_id);
+    end if;
+end //
+
+delimiter ;
+
+show triggers;
+
+6) generate a combined list of the top 3 highest marks in the "midterm" exam across all subjects. 
+select student_id, subject_id, marks
+from grades
+where exam_name = 'midterm'
+order by marks desc
+limit 3;
+
+7) list all students ordered by their names in ascending order. 
+select *
+from students
+order by name asc;
+
+
