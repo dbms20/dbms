@@ -1,0 +1,174 @@
+4a) imagine an online marketplace manages a vast inventory of home appliances products, process customer orders, and track the fulfillment process. they use a mysql database to manage their products, inventory, orders, and shipping information. entities are listed below: 
+● products: stores detailed information about each product listed on the platform (product_id, name, description, price, category_id). 
+● categories: lists the different product categories (category_id, category_name). 
+● inventory: tracks the stock levels for each product in their warehouse(s) (inventory_id, product_id, warehouse_id, quantity_in_stock, last_stock_update). 
+● warehouses: lists the different warehouse locations (warehouse_id, warehouse_name, city). 
+● orders: records customer orders (order_id, customer_id, order_date, shipping_address, order_status). 
+● shipments: tracks the shipment details for each order (shipment_id, order_id, shipping_carrier, tracking_number, shipment_date). 
+
+-- categories
+create table categories (
+    category_id int primary key,
+    category_name varchar(50)
+);
+
+-- products
+create table products (
+    product_id int primary key,
+    name varchar(50),
+    description varchar(100),
+    price decimal(10,2),
+    category_id int,
+    foreign key (category_id) references categories(category_id)
+);
+
+-- warehouses
+create table warehouses (
+    warehouse_id int primary key,
+    warehouse_name varchar(50),
+    city varchar(50)
+);
+
+-- inventory
+create table inventory (
+    inventory_id int primary key,
+    product_id int,
+    warehouse_id int,
+    quantity_in_stock int,
+    last_stock_update date,
+    foreign key (product_id) references products(product_id),
+    foreign key (warehouse_id) references warehouses(warehouse_id)
+);
+
+-- orders
+create table orders (
+    order_id int primary key,
+    customer_id int,
+    order_date date,
+    shipping_address varchar(100),
+    order_status varchar(20)
+);
+
+-- shipments
+create table shipments (
+    shipment_id int primary key,
+    order_id int,
+    shipping_carrier varchar(50),
+    tracking_number varchar(50),
+    shipment_date date,
+    foreign key (order_id) references orders(order_id)
+);
+
+-- categories
+insert into categories values
+(1, 'kitchen'),
+(2, 'electronics'),
+(3, 'home appliances');
+
+-- products
+insert into products values
+(101, 'mixer', 'kitchen mixer', 3000, 1),
+(102, 'microwave', 'oven', 8000, 3),
+(103, 'fan', 'ceiling fan', 2000, 3),
+(104, 'tv', 'smart tv', 25000, 2);
+
+-- warehouses
+insert into warehouses values
+(1, 'wh-pune', 'pune'),
+(2, 'wh-mumbai', 'mumbai');
+
+-- inventory
+insert into inventory values
+(1, 101, 1, 15, '2026-04-20'),
+(2, 102, 1, 8, '2026-04-20'),
+(3, 103, 2, 5, '2026-04-20'),
+(4, 104, 2, 20, '2026-04-20');
+
+-- orders
+insert into orders values
+(1, 201, '2026-04-20', 'pune', 'pending'),
+(2, 202, '2026-04-21', 'mumbai', 'shipped'),
+(3, 201, '2026-04-22', 'pune', 'delivered');
+
+-- shipments
+insert into shipments values
+(1, 2, 'bluedart', 'trk123', '2026-04-21'),
+(2, 3, 'dtdc', 'trk456', '2026-04-22');
+
+
+
+
+write and execute the sql queries for the following 
+1. find how many products are listed under each category. 
+
+select c.category_name, count(p.product_id) as total_products
+from categories c
+left join products p on c.category_id = p.category_id
+group by c.category_name;
+
+2. create a procedure to retrieve all orders for a given customer id. 
+delimiter //
+
+create procedure getordersbycustomer(in cid int)
+begin
+    select *
+    from orders
+    where customer_id = cid;
+end //
+
+delimiter ;
+call getordersbycustomer(201);
+
+3. retrieve product name and category name using products and categories tables. 
+
+select p.name as product_name, c.category_name
+from products p
+join categories c on p.category_id = c.category_id;
+
+4. create a view to show products with low stock (less than 10 units total) 
+create view low_stock_products as
+select 
+    p.name,
+    sum(i.quantity_in_stock) as total_stock
+from products p
+join inventory i on p.product_id = i.product_id
+group by p.name
+having sum(i.quantity_in_stock) < 10;
+
+select * from low_stock_products;
+
+5. count how many orders exist in each status (e.g., pending, shipped, delivered). 
+
+select order_status, count(*) as total_orders
+from orders
+group by order_status;
+
+6. create a trigger to prevent insertion of negative stock values. 
+
+delimiter //
+
+create trigger prevent_negative_stock
+before insert on inventory
+for each row
+begin
+    if new.quantity_in_stock < 0 then
+        signal sqlstate '45000'
+        set message_text = 'stock cannot be negative';
+    end if;
+end //
+
+delimiter ;
+
+
+7. show all warehouses located in a specific city. 
+select *
+from warehouses
+where city = 'pune';
+
+
+
+
+
+
+
+
