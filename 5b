@@ -1,0 +1,140 @@
+
+5b) imagine a hospital management system which stores patients information, doctors information, appointments, departments. 
+patients: stores personal details of each patient (patientid, patientname, dob, address, phonenumber)
+ doctors: stores details of doctors (doctorid, doctorname, specialty, departmentid) 
+appointments: tracks patient appointments with doctors (appointmentid, patientid, doctorid, appointment_date, created_at_time) 
+departments: lists various departments in the hospital (departmentid, departmentname, location) 
+
+-- departments
+create table departments (
+    departmentid int primary key,
+    departmentname varchar(50),
+    location varchar(50)
+);
+
+-- patients
+create table patients (
+    patientid int primary key,
+    patientname varchar(50),
+    dob date,
+    address varchar(100),
+    phonenumber varchar(15)
+);
+
+-- doctors
+create table doctors (
+    doctorid int primary key,
+    doctorname varchar(50),
+    specialty varchar(50),
+    departmentid int default 1,
+    foreign key (departmentid) references departments(departmentid)
+);
+
+-- appointments
+create table appointments (
+    appointmentid int primary key,
+    patientid int,
+    doctorid int,
+    appointment_date date,
+    created_at_time datetime,
+    foreign key (patientid) references patients(patientid),
+    foreign key (doctorid) references doctors(doctorid)
+);
+
+
+
+
+
+-- departments
+insert into departments values
+(1, 'general', 'block a'),
+(2, 'cardiology', 'block b'),
+(3, 'neurology', 'block c'),
+(4, 'orthopedics', 'block d');
+
+-- patients
+insert into patients values
+(101, 'amit', '2000-03-10', 'pune', '9876543210'),
+(102, 'sneha', '1998-07-12', 'mumbai', '9876501234'),
+(103, 'rahul', '2002-01-15', 'delhi', '9876512345');
+
+-- doctors
+insert into doctors values
+(1, 'dr. sharma', 'cardiology', 2),
+(2, 'dr. mehta', 'neurology', 3),
+(3, 'dr. khan', 'orthopedics', 4),
+(4, 'dr. patel', 'general', 1);
+
+-- appointments
+insert into appointments values
+(1, 101, 1, curdate(), now()),
+(2, 102, 2, curdate(), now()),
+(3, 103, 3, '2026-05-01', now());
+
+solve the following statements with the help of sql queries 
+1. list all doctors ordered by their specialties alphabetically. 
+select *
+from doctors
+order by specialty asc;
+
+
+2. how many doctors work in each department? 
+select dep.departmentname, count(d.doctorid) as total_doctors
+from departments dep
+left join doctors d on dep.departmentid = d.departmentid
+group by dep.departmentname;
+
+
+3. find the total number of appointments per doctor. 
+
+select d.doctorname, count(a.appointmentid) as total_appointments
+from doctors d
+left join appointments a on d.doctorid = a.doctorid
+group by d.doctorname;
+
+4. create a view to show patient names with their appointment dates. 
+create view patient_appointment_view as
+select p.patientname, a.appointment_date
+from patients p
+join appointments a on p.patientid = a.patientid;
+
+select * from patient_appointment_view;
+
+
+
+
+
+
+5. create a trigger to prevent duplicate appointments for the same patient and doctor at the same time. 
+
+delimiter //
+
+create trigger prevent_duplicate_appointment
+before insert on appointments
+for each row
+begin
+    if exists (
+        select 1
+        from appointments
+        where patientid = new.patientid
+          and doctorid = new.doctorid
+          and appointment_date = new.appointment_date
+    ) then
+        signal sqlstate '45000'
+        set message_text = 'duplicate appointment not allowed';
+    end if;
+end //
+
+delimiter ;
+
+
+6. find patients whose names start with ‘a’ 
+select *
+from patients
+where patientname like 'a%';
+
+7. find total number of patients registered in the system. 
+select count(*) as total_patients
+from patients;
+
+
