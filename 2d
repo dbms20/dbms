@@ -1,0 +1,212 @@
+2d) imagine a popular mobile application called "fitness tracking" used by fitness enthusiasts in the city. this application allows users to log their workouts, track their steps, monitor their heart rate, and set fitness goals. the application uses a mysql database to store user data. entities are given below: 
+● users: stores user profiles (user_id, name, email, registration_date, goal_id). 
+● goals: stores info of fitness goals (goal_id,goal_type) 
+● users_goal: (user_id, goal_id, goal_type) 
+● workouts: records details of each workout session (workout_id, user_id, date, workout_type, start_time, end_time, duration_in_minutes). 
+● workoutdetails: stores specific details for each workout, such as exercises performed, sets, reps, and weight used (workout_id, exercise_name, sets, repetitions, weight). 
+● steps: tracks daily step counts for each user (step_id, user_id, tracking_date, step_count). 
+
+-- goals
+create table goals (
+    goal_id int primary key,
+    goal_type varchar(50)
+);
+
+-- users
+create table users (
+    user_id int primary key,
+    name varchar(50),
+    email varchar(100),
+    registration_date date,
+    goal_id int,
+    foreign key (goal_id) references goals(goal_id)
+);
+
+-- users_goal
+create table users_goal (
+    user_id int,
+    goal_id int,
+    goal_type varchar(50),
+    primary key (user_id, goal_id),
+    foreign key (user_id) references users(user_id),
+    foreign key (goal_id) references goals(goal_id)
+);
+
+-- workouts
+create table workouts (
+    workout_id int primary key,
+    user_id int,
+    date date,
+    workout_type varchar(50),
+    start_time time,
+    end_time time,
+    duration_in_minutes int,
+    foreign key (user_id) references users(user_id)
+);
+
+-- workoutdetails
+create table workoutdetails (
+    workout_id int,
+    exercise_name varchar(50),
+    sets int,
+    repetitions int,
+    weight int,
+    foreign key (workout_id) references workouts(workout_id)
+);
+
+-- steps
+create table steps (
+    step_id int primary key,
+    user_id int,
+    tracking_date date,
+    step_count int,
+    foreign key (user_id) references users(user_id)
+);
+
+
+-- goals
+insert into goals values
+(1, 'weight loss'),
+(2, 'improve endurance'),
+(3, 'muscle gain');
+
+-- users
+insert into users values
+(101, 'amit', 'amit@gmail.com', '2026-01-10', 2),
+(102, 'sneha', 'sneha@yahoo.com', '2026-02-15', 3),
+(103, 'rahul', 'rahul@gmail.com', '2026-03-01', 2);
+
+-- users_goal
+insert into users_goal values
+(101, 2, 'improve endurance'),
+(102, 3, 'muscle gain'),
+(103, 2, 'improve endurance');
+
+-- workouts
+insert into workouts values
+(1, 101, '2026-03-10', 'running', '07:00:00', '07:30:00', 30),
+(2, 101, '2026-03-11', 'cycling', '06:00:00', '06:40:00', 40),
+(3, 101, '2026-03-12', 'running', '07:00:00', '07:20:00', 20),
+(4, 101, '2026-03-13', 'yoga', '06:30:00', '07:00:00', 30),
+
+(5, 102, '2026-03-10', 'gym', '18:00:00', '18:45:00', 45),
+
+(6, 103, '2026-03-10', 'cycling', '07:00:00', '07:25:00', 25),
+(7, 103, '2026-03-11', 'running', '07:00:00', '07:30:00', 30);
+
+-- workoutdetails
+insert into workoutdetails values
+(1, 'running', 1, 1, 0),
+(2, 'cycling', 1, 1, 0),
+(3, 'running', 1, 1, 0),
+(4, 'stretch', 2, 10, 0);
+
+-- steps
+insert into steps values
+(1, 101, '2026-03-10', 8000),
+(2, 101, '2026-03-11', 9000),
+(3, 102, '2026-03-10', 6000),
+(4, 103, '2026-03-10', 7000),
+(5, 103, '2026-03-11', 7500);
+
+
+write and execute mysql queries for the following. 
+1) identify users active on a specific date. 
+
+select distinct u.user_id, u.name
+from users u
+left join workouts w on u.user_id = w.user_id
+left join steps s on u.user_id = s.user_id
+where w.date = '2026-03-10'
+   or s.tracking_date = '2026-03-10';
+   
+
+2) display all step records for a particular user. 
+  
+select *
+from steps
+where user_id = 101;
+
+
+3) find users who registered in the last month. 
+
+select *
+from users
+where registration_date >= date_sub(curdate(), interval 1 month);
+
+4) create a view to get a summary of each user's workouts, including their name, the workout type, and the duration. 
+create view user_workout_summary as
+select 
+    u.name,
+    w.workout_type,
+    sum(w.duration_in_minutes) as total_duration
+from users u
+join workouts w on u.user_id = w.user_id
+group by u.name, w.workout_type;
+
+select * from user_workout_summary;
+
+
+
+5) use a cursor to display names of all users one by one. 
+
+delimiter //
+
+create procedure displayusers()
+begin
+    declare done int default false;
+    declare uname varchar(50);
+
+    declare cur cursor for 
+        select name from users;
+
+    declare continue handler for not found set done = true;
+
+    open cur;
+
+    read_loop: loop
+        fetch cur into uname;
+
+        if done then
+            leave read_loop;
+        end if;
+
+        select uname as user_name;
+    end loop;
+
+    close cur;
+end //
+
+delimiter ;
+call displayusers();
+
+6) create a procedure to insert a new workout record. 
+delimiter //
+
+create procedure addworkout(
+    in wid int,
+    in uid int,
+    in wdate date,
+    in wtype varchar(50),
+    in st time,
+    in et time,
+    in dur int
+)
+begin
+    insert into workouts
+    values (wid, uid, wdate, wtype, st, et, dur);
+end //
+
+delimiter ;
+
+call addworkout(10, 101, '2026-03-15', 'running', '07:00:00', '07:30:00', 30);
+
+7) find users who have completed more than 3 workouts. 
+select u.name, count(w.workout_id) as total_workouts
+from users u
+join workouts w on u.user_id = w.user_id
+group by u.name
+having count(w.workout_id) > 3;
+
+
+
