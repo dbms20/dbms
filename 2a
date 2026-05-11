@@ -1,0 +1,189 @@
+2a) imagine a popular mobile application called "fitness tracking" used by fitness enthusiasts in the city. this application allows users to log their workouts, track their steps, monitor their heart rate, and set fitness goals. the application uses a mysql database to store user data. entities are given below: 
+● users: stores user profiles (user_id, name, email, registration_date, goal_id). 
+● goals: stores info of fitness goals (goal_id,goal_type) 
+● users_goal: (user_id, goal_id, goal_type) 
+● workouts: records details of each workout session (workout_id, user_id, date, workout_type, start_time, end_time, duration_in_minutes). 
+● workoutdetails: stores specific details for each workout, such as exercises performed, sets, reps, and weight used (workout_id, exercise_name, sets, repetitions, weight). 
+● steps: tracks daily step counts for each user (step_id, user_id, tracking_date, step_count). 
+
+
+-- goals
+create table goals (
+    goal_id int primary key,
+    goal_type varchar(50)
+);
+
+-- users
+create table users (
+    user_id int primary key,
+    name varchar(50),
+    email varchar(100),
+    registration_date date,
+    goal_id int,
+    foreign key (goal_id) references goals(goal_id)
+);
+
+-- users_goal (many-to-many)
+create table users_goal (
+    user_id int,
+    goal_id int,
+    goal_type varchar(50),
+    primary key (user_id, goal_id),
+    foreign key (user_id) references users(user_id),
+    foreign key (goal_id) references goals(goal_id)
+);
+
+-- workouts
+create table workouts (
+    workout_id int primary key,
+    user_id int,
+    date date,
+    workout_type varchar(50),
+    start_time time,
+    end_time time,
+    duration_in_minutes int,
+    foreign key (user_id) references users(user_id)
+);
+
+-- workoutdetails
+create table workoutdetails (
+    workout_id int,
+    exercise_name varchar(50),
+    sets int,
+    repetitions int,
+    weight int,
+    foreign key (workout_id) references workouts(workout_id)
+);
+
+-- steps
+create table steps (
+    step_id int primary key,
+    user_id int,
+    tracking_date date,
+    step_count int,
+    foreign key (user_id) references users(user_id)
+);
+
+-- goals
+insert into goals values
+(1, 'weight loss'),
+(2, 'muscle gain'),
+(3, 'fitness maintenance');
+
+-- users
+insert into users values
+(101, 'amit', 'amit@gmail.com', '2026-01-10', 1),
+(102, 'sneha', 'sneha@yahoo.com', '2026-02-15', 2),
+(103, 'rahul', 'rahul@gmail.com', '2026-03-01', 1);
+
+-- users_goal
+insert into users_goal values
+(101, 1, 'weight loss'),
+(102, 2, 'muscle gain'),
+(103, 1, 'weight loss');
+
+-- workouts
+insert into workouts values
+(1, 101, '2026-03-10', 'cardio', '07:00:00', '07:30:00', 30),
+(2, 101, '2026-03-10', 'strength', '18:00:00', '18:40:00', 40),
+(3, 102, '2026-03-10', 'yoga', '06:00:00', '06:30:00', 30),
+(4, 103, '2026-03-11', 'cardio', '07:00:00', '07:20:00', 20);
+
+-- workoutdetails
+insert into workoutdetails values
+(1, 'running', 1, 1, 0),
+(2, 'bench press', 3, 10, 50),
+(3, 'stretching', 2, 15, 0),
+(4, 'cycling', 1, 1, 0);
+
+-- steps
+insert into steps values
+(1, 101, '2026-03-10', 8000),
+(2, 102, '2026-03-10', 6000),
+(3, 103, '2026-03-11', 7000);
+
+write and execute mysql queries for the following. 
+1. find the total duration of workouts for each user for a particular day. 
+select 
+    user_id,
+    sum(duration_in_minutes) as total_duration
+from workouts
+where date = '2026-03-10'
+group by user_id;
+
+
+2. create a stored procedure to retrieve all workouts for a specific user within a given date range. 
+delimiter //
+
+create procedure getuserworkouts(
+    in uid int,
+    in start_date date,
+    in end_date date
+)
+begin
+    select *
+    from workouts
+    where user_id = uid
+    and date between start_date and end_date;
+end //
+
+delimiter ;
+call getuserworkouts(101, '2026-03-01', '2026-03-31');
+
+3. retrieve a list of users along with the total number of workouts they have logged. 
+
+select 
+    u.name,
+    count(w.workout_id) as total_workouts
+from users u
+left join workouts w on u.user_id = w.user_id
+group by u.name;
+
+4. create a view that shows a summary of each user's workouts. this should include the user's name, workout type and total duration of all workouts. 
+create view workout_summary as
+select 
+    u.name,
+    w.workout_type,
+    sum(w.duration_in_minutes) as total_duration
+from users u
+join workouts w on u.user_id = w.user_id
+group by u.name, w.workout_type;
+
+select * from workout_summary;
+
+
+
+
+5. retrieve all users who have set a goal to lose weight (use the goal_type field to identify weight loss goals). 
+
+select distinct u.name
+from users u
+join users_goal ug on u.user_id = ug.user_id
+where ug.goal_type = 'weight loss';
+
+6. create a trigger to prevent insertion of workouts with end time earlier than start time. 
+
+
+delimiter //
+create trigger check_workout_time
+before insert on workouts
+for each row
+begin
+    if new.end_time < new.start_time then
+        signal sqlstate '45000'
+        set message_text = 'end time cannot be earlier than start time';
+    end if;
+end //
+
+delimiter ;
+
+show triggers;
+
+
+7. retrieve users whose email contains ‘gmail’. 
+select *
+from users
+where email like '%gmail%';
+
+
+
