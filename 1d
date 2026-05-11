@@ -1,0 +1,178 @@
+1d) imagine a school management system which manages student information, classes, subjects, grades, attendance, and teacher assignments. 
+students: stores personal details of each student (student id, name, date of birth, gender, class id). 
+classes: lists the different classes in the school (class id, class name, teacher id - optional, could be in a separate assignment table). 
+subjects: lists the subjects taught in the school (subject id, subject name). 
+teachers: stores personal details of teachers (teacher id, name, subject id - can teach multiple, so might need a linking table). 
+grades: records the marks obtained by students in different subjects for various exams (grade id, student id, subject id, exam name, marks). 
+attendance: tracks the daily attendance of students (student id, attendance date, status - present, absent, late). 
+
+-- classes
+create table classes (
+    class_id int primary key,
+    class_name varchar(50)
+);
+
+-- students
+create table students (
+    student_id int primary key,
+    name varchar(50),
+    date_of_birth date,
+    gender varchar(10),
+    class_id int,
+    foreign key (class_id) references classes(class_id)
+);
+
+-- subjects
+create table subjects (
+    subject_id int primary key,
+    subject_name varchar(50)
+);
+
+-- teachers
+create table teachers (
+    teacher_id int primary key,
+    name varchar(50)
+);
+
+-- teacher-subject mapping
+create table teacher_subject (
+    teacher_id int,
+    subject_id int,
+    primary key (teacher_id, subject_id),
+    foreign key (teacher_id) references teachers(teacher_id),
+    foreign key (subject_id) references subjects(subject_id)
+);
+
+-- grades
+create table grades (
+    grade_id int primary key,
+    student_id int,
+    subject_id int,
+    exam_name varchar(50),
+    marks int,
+    foreign key (student_id) references students(student_id),
+    foreign key (subject_id) references subjects(subject_id)
+);
+
+-- attendance
+create table attendance (
+    student_id int,
+    attendance_date date,
+    status varchar(10),
+    foreign key (student_id) references students(student_id)
+);
+
+
+-- classes
+insert into classes values
+(1, 'a'),
+(2, 'b'),
+(3, 'c');
+
+-- students
+insert into students values
+(101, 'amit', '2005-03-10', 'male', 1),
+(102, 'isha', '2006-07-12', 'female', 1),
+(103, 'rashmi', '2005-02-15', 'female', 2),
+(104, 'harsh', '2004-11-20', 'male', 2),
+(105, 'sneha', '2005-09-25', 'female', 3);
+
+-- subjects
+insert into subjects values
+(1, 'math'),
+(2, 'science'),
+(3, 'english'),
+(4, 'computer');
+
+-- teachers
+insert into teachers values
+(1, 'mr. sharma'),
+(2, 'ms. patel');
+
+-- mapping
+insert into teacher_subject values
+(1, 1),
+(1, 2),
+(2, 3),
+(2, 4);
+
+-- grades
+insert into grades values
+(1, 101, 1, 'midterm', 25),
+(2, 101, 2, 'midterm', 20),
+(3, 102, 1, 'midterm', 22),
+(4, 103, 2, 'midterm', 18),
+(5, 104, 3, 'midterm', 24),
+(6, 105, 4, 'midterm', 21);
+
+solve the following statements with the help of sql queries. 
+1) retrieve student names along with their class names. 
+
+select s.name, c.class_name
+from students s
+join classes c on s.class_id = c.class_id;
+
+2) display highest marks scored in each subject. 
+
+select subject_id, max(marks) as highest_marks
+from grades
+group by subject_id;
+
+3) create a trigger to prevent insertion of negative marks. 
+delimiter //
+
+create trigger prevent_negative_marks
+before insert on grades
+for each row
+begin
+    if new.marks < 0 then
+        signal sqlstate '45000'
+        set message_text = 'marks cannot be negative';
+    end if;
+end //
+
+delimiter ;
+
+show triggers;
+
+4) create a procedure to find total number of students in a class. 
+
+delimiter //
+
+create procedure getstudentcount(in cid int)
+begin
+    select count(*) as total_students
+    from students
+    where class_id = cid;
+end //
+
+delimiter ;
+
+call getstudentcount(1);
+
+5) display students whose total marks are greater than 80. 
+
+select s.name, sum(g.marks) as total_marks
+from students s
+join grades g on s.student_id = g.student_id
+group by s.name
+having sum(g.marks) > 80;
+
+6) retrieve students whose names contain ‘sh’. 
+
+select name
+from students
+where name like '%sh%';
+
+
+
+
+7) display subjects whose average marks are higher than overall average marks 
+select subject_id, avg(marks) as avg_marks
+from grades
+group by subject_id
+having avg(marks) > (select avg(marks) from grades);
+
+
+
+
