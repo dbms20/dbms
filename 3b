@@ -1,0 +1,148 @@
+3b) imagine a online restaurant needs a system to manage the menu, track customer orders and generate sales reports. they use a mysql database for this. entities are as follows: 
+● menu: stores details of all the items offered by the restaurant (item_id, item_name, category, price). 
+● customers: stores information about registered customers (customer_id, name, contact_number). 
+● orders: records details of each order placed (order_id, customer_id, order_date_time). 
+● orderitems: lists the individual items included in each order (order_id, item_id, quantity, unit_price). 
+
+-- menu
+create table menu (
+    item_id int primary key,
+    item_name varchar(50),
+    category varchar(50),
+    price decimal(10,2)
+);
+
+-- customers
+create table customers (
+    customer_id int primary key,
+    name varchar(50),
+    contact_number varchar(15)
+);
+
+-- orders
+create table orders (
+    order_id int primary key,
+    customer_id int,
+    order_date_time datetime,
+    foreign key (customer_id) references customers(customer_id)
+);
+
+-- orderitems
+create table orderitems (
+    order_id int,
+    item_id int,
+    quantity int,
+    unit_price decimal(10,2),
+    foreign key (order_id) references orders(order_id),
+    foreign key (item_id) references menu(item_id)
+);
+
+
+
+
+-- menu
+insert into menu values
+(1, 'pizza', 'pizza', 200),
+(2, 'burger', 'burgers', 120),
+(3, 'pasta', 'italian', 180),
+(4, 'salad', 'healthy', 100);
+
+-- customers
+insert into customers values
+(101, 'amit', '9876543210'),
+(102, 'sneha', '9876501234'),
+(103, 'rahul', '9876512345');
+
+-- orders
+insert into orders values
+(1, 101, '2026-04-25 12:00:00'),
+(2, 102, '2026-04-25 13:00:00'),
+(3, 101, '2026-04-24 19:30:00');
+
+-- orderitems
+insert into orderitems values
+(1, 1, 2, 200),  -- pizza
+(1, 2, 1, 120),  -- burger
+(2, 3, 1, 180),
+(3, 1, 1, 200);
+
+write and execute the sql queries for the following 
+1) calculate the total price of each item in order_id 1. 
+
+select 
+    item_id,
+    quantity,
+    unit_price,
+    (quantity * unit_price) as total_price
+from orderitems
+where order_id = 1;
+
+2) find the names of all customers who have placed an order 
+
+select distinct c.name
+from customers c
+join orders o on c.customer_id = o.customer_id;
+
+3) find total number of customers registered in the system. 
+select count(*) as total_customers
+from customers;
+
+4) find the names of customers who have placed orders containing items from both the 'pizza' and 'burgers' categories. 
+
+select c.name
+from customers c
+join orders o on c.customer_id = o.customer_id
+join orderitems oi on o.order_id = oi.order_id
+join menu m on oi.item_id = m.item_id
+where m.category in ('pizza', 'burgers')
+group by c.name
+having count(distinct m.category) = 2;
+
+5) find the menu items that have never been included in any order. 
+select m.item_name
+from menu m
+left join orderitems oi on m.item_id = oi.item_id
+where oi.item_id is null;
+6) create a function to check if an item is in a specific category. 
+delimiter //
+
+create function checkcategory(
+    itemid int,
+    cat varchar(50)
+)
+returns varchar(20)
+deterministic
+begin
+    declare result varchar(20);
+
+    select if(category = cat, 'yes', 'no')
+    into result
+    from menu
+    where item_id = itemid;
+
+    return result;
+end //
+
+delimiter ;
+select checkcategory(1, 'pizza') as result;
+
+7) create a trigger to prevent insertion of items with negative price. 
+delimiter //
+
+create trigger prevent_negative_price
+before insert on menu
+for each row
+begin
+    if new.price < 0 then
+        signal sqlstate '45000'
+        set message_text = 'price cannot be negative';
+    end if;
+end //
+
+delimiter ;
+
+show triggers;
+
+
+
+
